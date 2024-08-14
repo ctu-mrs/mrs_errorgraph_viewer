@@ -12,7 +12,6 @@ set(CATKIN_DEPENDENCIES
   nodelet
   mrs_msgs
   mrs_lib
-  mrs_robot_diagnostics
   )
 
 set(LIBRARIES
@@ -21,6 +20,21 @@ set(LIBRARIES
 
 find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_DEPENDENCIES}
+  )
+
+# messages
+add_message_files(DIRECTORY msg FILES
+  ErrorgraphNodeID.msg
+  ErrorgraphError.msg
+  ErrorgraphElement.msg
+  )
+
+## Generate added messages and services with any dependencies listed here
+generate_messages(DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  sensor_msgs
+  mrs_msgs
   )
 
 catkin_package(

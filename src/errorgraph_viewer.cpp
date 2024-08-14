@@ -10,8 +10,7 @@
 #include <mrs_lib/mutex.h>
 #include <mrs_lib/subscribe_handler.h>
 
-#include <mrs_robot_diagnostics/ErrorgraphNodeID.h>
-#include <mrs_robot_diagnostics/ErrorgraphError.h>
+#include <mrs_errorgraph_viewer/errorgraph.h>
 
 //}
 
@@ -22,20 +21,19 @@ namespace mrs_errorgraph_viewer
 
   class ErrorgraphViewer : public nodelet::Nodelet
   {
-  private:
-    using errorgraph_error_msg_t = mrs_robot_diagnostics::ErrorgraphError;
-
   public:
     virtual void onInit();
 
   private:
     ros::NodeHandle nh_;
 
+    Errorgraph errorgraph_;
+
     // | ---------------------- ROS subscribers --------------------- |
 
     std::shared_ptr<mrs_lib::TimeoutManager> tim_mgr_;
 
-    mrs_lib::SubscribeHandler<errorgraph_error_msg_t> sh_errorgraph_error_msg_;
+    mrs_lib::SubscribeHandler<errorgraph_element_msg_t> sh_errorgraph_error_msg_;
 
     // | ----------------------- main timer ----------------------- |
 
@@ -94,7 +92,7 @@ namespace mrs_errorgraph_viewer
     shopts.transport_hints = ros::TransportHints().tcpNoDelay();
 
     // | --------------------- Main subscriber -------------------- |
-    sh_errorgraph_error_msg_ = mrs_lib::SubscribeHandler<errorgraph_error_msg_t>(shopts, "in/errors");
+    sh_errorgraph_error_msg_ = mrs_lib::SubscribeHandler<errorgraph_element_msg_t>(shopts, "in/errors");
 
     // | ------------------------- timers ------------------------- |
 
