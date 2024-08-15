@@ -9,28 +9,55 @@ namespace mrs_errorgraph_viewer
     return false;
   }
 
-  std::vector<std::unique_ptr<Errorgraph::path_node_t>> Errorgraph::find_dependencies(const element_t& element, bool* loop_detected_out)
+  std::vector<const Errorgraph::element_t*> Errorgraph::find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out)
   {
-    // std::vector<const path_node_t*> path_roots;
-    std::vector<const element_t*> open_elements = find_previous_elements(element);
-    std::vector<std::unique_ptr<path_node_t>> visited_elements;
+    // first, make sure that the elements are connected as the graph
+    prepare_graph(elements_);
+
+    std::vector<const element_t*> roots;
+    std::vector<element_t*> open_elements;
     bool loop_detected = false;
 
-    // basically DFS
+    // prepare the first element into the open elements stack
+    open_elements.push_back(find_element_mutable(node_id, elements_));
+
+    // run the DFS
     while (!open_elements.empty())
     {
-      const auto cur_elem = open_elements.back();
+      auto cur_elem = open_elements.back();
       open_elements.pop_back();
-      const std::vector<const element_t*> prevs = find_previous_elements(*cur_elem);
-      for (const auto& el : prevs)
+      const auto prevs = find_waiting_for(*cur_elem, elements_);
+
+      // if this element doesn't have any nodes it's waiting for, it is a root
+      if (prevs.empty())
+        roots.push_back(cur_elem);
+
+      // if there are any nodes it's waiting for, process them
+      for (auto& el : prevs)
       {
-        //TODO
+        // if the element was not visited, add it to the open list
+        if (!el->visited)
+        {
+          open_elements.push_back(el);
+        }
+        // if this element was already visited, we have a loop
+        else
+        {
+          // add the element as a root although it's within a loop
+          // so that the dependency doesn't get lost in the output
+          roots.push_back(el);
+          loop_detected = true;
+        }
+
+        // create the both-sided connection
+        el->parents.push_back(cur_elem);
+        cur_elem->children.push_back(el);
       }
     }
 
     if (loop_detected_out != nullptr)
       *loop_detected_out = loop_detected;
-    return visited_elements;
+    return roots;
   }
 
   std::vector<const Errorgraph::element_t*> Errorgraph::find_all_roots()
@@ -44,27 +71,44 @@ namespace mrs_errorgraph_viewer
     return roots;
   }
 
-  std::vector<const Errorgraph::element_t*> Errorgraph::find_previous_elements(const element_t& element)
+  std::vector<const Errorgraph::element_t*> Errorgraph::find_all_leaves()
   {
-    std::vector<const element_t*> waiting_for_elements;
+    std::vector<const element_t*> leaves;
+    for (const auto& el_ptr : elements_)
+    {
+      for (const auto& el_ptr2 : elements_)
+      {
+        if (el_ptr2->is_waiting_for(el_ptr->source_node))
+        {
+          leaves.push_back(el_ptr.get());
+          break;
+        }
+      }
+    }
+    return leaves;
+  }
+
+  std::vector<Errorgraph::element_t*> Errorgraph::find_waiting_for(const element_t& element, const std::vector<std::unique_ptr<element_t>>& elements)
+  {
+    std::vector<element_t*> waiting_for_elements;
 
     const auto waiting_for_node_ids = element.waiting_for();
     for (const auto& node_id_ptr : waiting_for_node_ids)
     {
-      const auto previous_el = find_element(*node_id_ptr);
+      const auto previous_el = find_element_mutable(*node_id_ptr, elements);
       if (previous_el != nullptr)
         waiting_for_elements.push_back(previous_el);
     }
     return waiting_for_elements;
   }
 
-  Errorgraph::element_t* Errorgraph::find_element_mutable(const node_id_t& node_id)
+  Errorgraph::element_t* Errorgraph::find_element_mutable(const node_id_t& node_id, const std::vector<std::unique_ptr<element_t>>& elements)
   {
-    const auto elem_it = std::find_if(std::begin(elements_), std::end(elements_), [node_id](const auto& el_ptr)
+    const auto elem_it = std::find_if(std::begin(elements), std::end(elements), [node_id](const auto& el_ptr)
       {
         return el_ptr->source_node == node_id;
       });
-    if (elem_it == std::end(elements_))
+    if (elem_it == std::end(elements))
       return nullptr;
     else
       return elem_it->get();
@@ -72,13 +116,23 @@ namespace mrs_errorgraph_viewer
 
   const Errorgraph::element_t* Errorgraph::find_element(const node_id_t& node_id)
   {
-    return find_element_mutable(node_id);
+    return find_element_mutable(node_id, elements_);
+  }
+
+  void Errorgraph::prepare_graph(const std::vector<std::unique_ptr<element_t>>& elements)
+  {
+    for (const auto& el_ptr : elements)
+    {
+      el_ptr->children.clear();
+      el_ptr->parents.clear();
+      el_ptr->visited = false;
+    }
   }
 
   const Errorgraph::element_t* Errorgraph::add_element_from_msg(const errorgraph_element_msg_t& msg)
   {
     node_id_t source_node_id = node_id_t::from_msg(msg.source_node);
-    element_t* element = find_element_mutable(source_node_id);
+    element_t* element = find_element_mutable(source_node_id, elements_);
     // if this element doesn't exist yet, construct it
     if (element == nullptr)
     {

@@ -52,6 +52,11 @@ namespace mrs_errorgraph_viewer
       return type == errorgraph_error_msg_t::ERROR_TYPE_WAITING_FOR;
     }
 
+    inline bool is_waiting_for(const node_id_t& node_id) const
+    {
+      return type == errorgraph_error_msg_t::ERROR_TYPE_WAITING_FOR && waiting_for_node.has_value() && waiting_for_node.value() == node_id;
+    }
+
     inline bool is_no_error() const
     {
       return type == errorgraph_error_msg_t::ERROR_TYPE_NO_ERROR;
@@ -69,10 +74,17 @@ namespace mrs_errorgraph_viewer
   {
     public:
 
+      struct path_node_t;
+
       struct element_t
       {
         node_id_t source_node;
         std::vector<errorgraph_error_t> errors;
+
+        // graph-related variables
+        std::vector<element_t*> parents;
+        std::vector<element_t*> children;
+        bool visited;
 
         element_t(node_id_t&& source_node)
           : source_node(source_node) {};
@@ -97,6 +109,14 @@ namespace mrs_errorgraph_viewer
               });
         }
 
+        inline bool is_waiting_for(const node_id_t& node_id) const
+        {
+          return std::any_of(std::begin(errors), std::end(errors), [node_id](const auto& error)
+              {
+                return error.is_waiting_for(node_id);
+              });
+        }
+
         inline bool is_no_error() const
         {
           return std::all_of(std::begin(errors), std::end(errors), [](const auto& error)
@@ -106,27 +126,24 @@ namespace mrs_errorgraph_viewer
         }
       };
 
-      struct path_node_t
-      {
-        std::vector<path_node_t*> parents;
-        std::vector<path_node_t*> children;
-        element_t* element;
-      };
-
     private:
       std::vector<std::unique_ptr<element_t>> elements_;
 
-      std::vector<const element_t*> find_previous_elements(const element_t& element);
+      static std::vector<element_t*> find_waiting_for(const element_t& element, const std::vector<std::unique_ptr<element_t>>& elements);
 
-      element_t* find_element_mutable(const node_id_t& node_id);
+      static element_t* find_element_mutable(const node_id_t& node_id, const std::vector<std::unique_ptr<element_t>>& elements);
+
+      void prepare_graph(const std::vector<std::unique_ptr<element_t>>& elements);
 
     public:
 
       bool has_loops();
 
-      std::vector<std::unique_ptr<path_node_t>> find_dependencies(const element_t& element, bool* loop_detected_out);
+      std::vector<const element_t* > find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out = nullptr);
 
       std::vector<const element_t*> find_all_roots();
+
+      std::vector<const element_t*> find_all_leaves();
 
       const element_t* find_element(const node_id_t& node_id);
 

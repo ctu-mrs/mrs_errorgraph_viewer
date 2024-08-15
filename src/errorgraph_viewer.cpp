@@ -42,16 +42,26 @@ namespace mrs_errorgraph_viewer
     void timerMain(const ros::TimerEvent& event)
     {
       std::scoped_lock lck(errorgraph_mtx_);
-      const auto error_roots = errorgraph_.find_all_roots();
-      std::cout << "Error roots are:\n";
-      for (const auto& error_root_ptr : error_roots)
-      {
-        std::cout << error_root_ptr->source_node << std::endl;
-        for (const auto& error : error_root_ptr->errors)
-        {
-          std::cout << "\t-" << error.type << std::endl;
-        }
-      }
+      const auto leaves = errorgraph_.find_all_leaves();
+      if (leaves.empty())
+        return;
+
+      auto open_elements = errorgraph_.find_dependency_roots(leaves.front()->source_node);
+      std::cout << "Error dependencies are:\n";
+      // int level = 0;
+      // while (!open_elements.empty())
+      // {
+      //   auto cur_elem = open_elements.back();
+      //   open_elements.pop_back();
+      //   for (const auto& cur_elem : open_elements)
+      //   {
+      //     std::cout << error_root_ptr->source_node << std::endl;
+      //     for (const auto& error : error_root_ptr->errors)
+      //     {
+      //       std::cout << "\t- " << error.type << std::endl;
+      //     }
+      //   }
+      // }
     }
 
     // | ----------------- error message callback ----------------- |
