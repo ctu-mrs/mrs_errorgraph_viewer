@@ -24,6 +24,7 @@ namespace mrs_errorgraph_viewer
     while (!open_elements.empty())
     {
       auto cur_elem = open_elements.back();
+      cur_elem->visited = true;
       open_elements.pop_back();
       const auto prevs = find_waiting_for(*cur_elem, elements);
 
@@ -69,7 +70,10 @@ namespace mrs_errorgraph_viewer
     {
       const auto elem = last_unvisited->get();
       if (elem->visited)
+      {
+        last_unvisited++;
         continue;
+      }
       DFS(elem, elements);
     }
   }
@@ -153,7 +157,7 @@ namespace mrs_errorgraph_viewer
     // if this element doesn't exist yet, construct it
     if (element == nullptr)
     {
-      auto new_element_ptr = std::make_unique<element_t>(std::move(source_node_id));
+      auto new_element_ptr = std::make_unique<element_t>(std::move(source_node_id), last_element_id++);
       element = new_element_ptr.get();
       elements_.emplace_back(std::move(new_element_ptr));
     }
@@ -163,5 +167,17 @@ namespace mrs_errorgraph_viewer
       element->errors.emplace_back(error_msg);
 
     return element;
+  }
+
+  void Errorgraph::write_dot()
+  {
+    build_graph(elements_);
+
+    for (const auto& element : elements_)
+    {
+      std::cout << element->element_id << " [label=\"" << element->source_node << "\"];\n";
+      for (const auto& child : element->children)
+        std::cout << element->element_id << " -> " << child->element_id << ";\n";
+    }
   }
 }

@@ -78,6 +78,7 @@ namespace mrs_errorgraph_viewer
 
       struct element_t
       {
+        size_t element_id;
         node_id_t source_node;
         std::vector<errorgraph_error_t> errors;
 
@@ -86,8 +87,8 @@ namespace mrs_errorgraph_viewer
         std::vector<element_t*> children;
         bool visited;
 
-        element_t(node_id_t&& source_node)
-          : source_node(source_node) {};
+        element_t(node_id_t&& source_node, size_t element_id)
+          : source_node(source_node), element_id(element_id) {};
 
         inline std::vector<const node_id_t*> waiting_for() const
         {
@@ -139,7 +140,11 @@ namespace mrs_errorgraph_viewer
 
       static std::vector<const element_t*> DFS(element_t* from, const std::vector<std::unique_ptr<element_t>>& elements, bool* loop_detected_out = nullptr);
 
+      size_t last_element_id = 0;
+
     public:
+
+      void write_dot();
 
       std::vector<const element_t* > find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out = nullptr);
 
