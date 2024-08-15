@@ -4,6 +4,7 @@ project(mrs_errorgraph_viewer)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-save-temps)
+add_definitions(-O0)
 
 set(CATKIN_DEPENDENCIES
   cmake_modules

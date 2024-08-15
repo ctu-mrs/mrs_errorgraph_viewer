@@ -27,6 +27,7 @@ namespace mrs_errorgraph_viewer
   private:
     ros::NodeHandle nh_;
 
+    std::mutex errorgraph_mtx_;
     Errorgraph errorgraph_;
 
     // | ---------------------- ROS subscribers --------------------- |
@@ -38,7 +39,27 @@ namespace mrs_errorgraph_viewer
     // | ----------------------- main timer ----------------------- |
 
     ros::Timer timer_main_;
-    void timerMain(const ros::TimerEvent& event);
+    void timerMain(const ros::TimerEvent& event)
+    {
+      std::scoped_lock lck(errorgraph_mtx_);
+      const auto error_roots = errorgraph_.find_all_roots();
+      std::cout << "Error roots are:\n";
+      for (const auto& error_root_ptr : error_roots)
+      {
+        std::cout << error_root_ptr->source_node << std::endl;
+        for (const auto& error : error_root_ptr->errors)
+        {
+          std::cout << "\t-" << error.type << std::endl;
+        }
+      }
+    }
+
+    // | ----------------- error message callback ----------------- |
+    void cbkElement(const errorgraph_element_msg_t::ConstPtr element_msg)
+    {
+      std::scoped_lock lck(errorgraph_mtx_);
+      errorgraph_.add_element_from_msg(*element_msg);
+    }
 
     // | ------------------ Additional functions ------------------ |
 
@@ -92,7 +113,7 @@ namespace mrs_errorgraph_viewer
     shopts.transport_hints = ros::TransportHints().tcpNoDelay();
 
     // | --------------------- Main subscriber -------------------- |
-    sh_errorgraph_error_msg_ = mrs_lib::SubscribeHandler<errorgraph_element_msg_t>(shopts, "in/errors");
+    sh_errorgraph_error_msg_ = mrs_lib::SubscribeHandler<errorgraph_element_msg_t>(shopts, "in/errors", &ErrorgraphViewer::cbkElement, this);
 
     // | ------------------------- timers ------------------------- |
 

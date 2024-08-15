@@ -36,11 +36,6 @@ namespace mrs_errorgraph_viewer
     }
   };
 
-  inline std::ostream& operator<<(std::ostream& os, const node_id_t& node_id)
-  {
-    return os << node_id.node << "." << node_id.component;
-  }
-
   struct errorgraph_error_t
   {
     ros::Time stamp;

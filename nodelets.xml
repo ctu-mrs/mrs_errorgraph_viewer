@@ -1,5 +1,5 @@
-<library path="lib/libMRSRobotDiagnostics_StateMonitor">
-  <class name="mrs_errorgraph_viewer/StateMonitor" type="mrs_errorgraph_viewer::StateMonitor" base_class_type="nodelet::Nodelet">
+<library path="lib/libMRSErrorgraphViewer">
+  <class name="mrs_errorgraph_viewer/MRSErrorgraphViewer" type="mrs_errorgraph_viewer::ErrorgraphViewer" base_class_type="nodelet::Nodelet">
     <description>StateMonitor nodelet</description>
   </class>
 </library>
