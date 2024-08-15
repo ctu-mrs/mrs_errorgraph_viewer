@@ -3,30 +3,29 @@
 namespace mrs_errorgraph_viewer
 {
 
-  bool Errorgraph::has_loops()
-  {
-    // TODO
-    return false;
-  }
-
   std::vector<const Errorgraph::element_t*> Errorgraph::find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out)
   {
     // first, make sure that the elements are connected as the graph
     prepare_graph(elements_);
+    const auto elem = find_element_mutable(node_id, elements_);
+    return DFS(elem, elements_, loop_detected_out);
+  }
 
+  std::vector<const Errorgraph::element_t*> Errorgraph::DFS(element_t* from, const std::vector<std::unique_ptr<element_t>>& elements, bool* loop_detected_out)
+  {
     std::vector<const element_t*> roots;
     std::vector<element_t*> open_elements;
     bool loop_detected = false;
 
     // prepare the first element into the open elements stack
-    open_elements.push_back(find_element_mutable(node_id, elements_));
+    open_elements.push_back(from);
 
     // run the DFS
     while (!open_elements.empty())
     {
       auto cur_elem = open_elements.back();
       open_elements.pop_back();
-      const auto prevs = find_waiting_for(*cur_elem, elements_);
+      const auto prevs = find_waiting_for(*cur_elem, elements);
 
       // if this element doesn't have any nodes it's waiting for, it is a root
       if (prevs.empty())
@@ -60,6 +59,21 @@ namespace mrs_errorgraph_viewer
     return roots;
   }
 
+  void Errorgraph::build_graph(const std::vector<std::unique_ptr<element_t>>& elements)
+  {
+    // first, make sure that the elements are connected as the graph
+    // and all helper member variables are reset
+    prepare_graph(elements);
+    auto last_unvisited = std::begin(elements);
+    while (last_unvisited != std::end(elements))
+    {
+      const auto elem = last_unvisited->get();
+      if (elem->visited)
+        continue;
+      DFS(elem, elements);
+    }
+  }
+
   std::vector<const Errorgraph::element_t*> Errorgraph::find_all_roots()
   {
     std::vector<const element_t*> roots;
@@ -76,14 +90,17 @@ namespace mrs_errorgraph_viewer
     std::vector<const element_t*> leaves;
     for (const auto& el_ptr : elements_)
     {
+      bool is_leaf = true;
       for (const auto& el_ptr2 : elements_)
       {
         if (el_ptr2->is_waiting_for(el_ptr->source_node))
         {
-          leaves.push_back(el_ptr.get());
+          is_leaf = false;
           break;
         }
       }
+      if (is_leaf)
+        leaves.push_back(el_ptr.get());
     }
     return leaves;
   }

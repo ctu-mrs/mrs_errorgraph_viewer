@@ -133,11 +133,13 @@ namespace mrs_errorgraph_viewer
 
       static element_t* find_element_mutable(const node_id_t& node_id, const std::vector<std::unique_ptr<element_t>>& elements);
 
-      void prepare_graph(const std::vector<std::unique_ptr<element_t>>& elements);
+      static void prepare_graph(const std::vector<std::unique_ptr<element_t>>& elements);
+
+      static void build_graph(const std::vector<std::unique_ptr<element_t>>& elements);
+
+      static std::vector<const element_t*> DFS(element_t* from, const std::vector<std::unique_ptr<element_t>>& elements, bool* loop_detected_out = nullptr);
 
     public:
-
-      bool has_loops();
 
       std::vector<const element_t* > find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out = nullptr);
 

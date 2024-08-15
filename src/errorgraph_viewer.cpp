@@ -38,30 +38,54 @@ namespace mrs_errorgraph_viewer
 
     // | ----------------------- main timer ----------------------- |
 
+    struct element_with_depth_t
+    {
+      const Errorgraph::element_t* element;
+      int depth;
+      element_with_depth_t(const Errorgraph::element_t* const element, const int depth)
+        : element(element), depth(depth) {};
+    };
+
     ros::Timer timer_main_;
     void timerMain(const ros::TimerEvent& event)
     {
       std::scoped_lock lck(errorgraph_mtx_);
       const auto leaves = errorgraph_.find_all_leaves();
-      if (leaves.empty())
-        return;
 
-      auto open_elements = errorgraph_.find_dependency_roots(leaves.front()->source_node);
       std::cout << "Error dependencies are:\n";
-      // int level = 0;
-      // while (!open_elements.empty())
-      // {
-      //   auto cur_elem = open_elements.back();
-      //   open_elements.pop_back();
-      //   for (const auto& cur_elem : open_elements)
-      //   {
-      //     std::cout << error_root_ptr->source_node << std::endl;
-      //     for (const auto& error : error_root_ptr->errors)
-      //     {
-      //       std::cout << "\t- " << error.type << std::endl;
-      //     }
-      //   }
-      // }
+      for (const auto& leaf : leaves)
+      {
+        const auto roots = errorgraph_.find_dependency_roots(leaf->source_node);
+        std::vector<element_with_depth_t> open_elements;
+        open_elements.reserve(roots.size());
+        for (const auto& el_ptr : roots)
+          open_elements.emplace_back(el_ptr, 0);
+
+        while (!open_elements.empty())
+        {
+          auto cur_elem = open_elements.back();
+          open_elements.pop_back();
+          for (int it = 0; it < cur_elem.depth; it++)
+            std::cout << "\t";
+          if (cur_elem.depth > 0)
+            std::cout << "└ ";
+          else
+            std::cout << "x ";
+          std::cout << cur_elem.element->source_node << ":\t";
+          for (int it = 0; it < cur_elem.element->errors.size(); it++)
+          {
+            std::cout << cur_elem.element->errors.at(it).type;
+            if (it+1 < cur_elem.element->errors.size())
+              std::cout << ",";
+          }
+          std::cout << "\n";
+
+
+          open_elements.reserve(open_elements.size() + cur_elem.element->parents.size());
+          for (const auto& el_ptr : cur_elem.element->parents)
+            open_elements.emplace_back(el_ptr, cur_elem.depth+1);
+        }
+      }
     }
 
     // | ----------------- error message callback ----------------- |
