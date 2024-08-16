@@ -1,6 +1,6 @@
-#include <mrs_errorgraph_viewer/errorgraph.h>
+#include <mrs_errorgraph/errorgraph.h>
 
-namespace mrs_errorgraph_viewer
+namespace mrs_errorgraph
 {
 
   std::vector<const Errorgraph::element_t*> Errorgraph::find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out)

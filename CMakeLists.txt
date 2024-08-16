@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.15.0)
-project(mrs_errorgraph_viewer)
+project(mrs_errorgraph)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-save-temps)
-add_definitions(-O0)
+# add_definitions(-O0)
 
 set(CATKIN_DEPENDENCIES
   cmake_modules
@@ -93,7 +93,7 @@ install(DIRECTORY launch config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )
 
-install(DIRECTORY include/mrs_errorgraph_viewer/
+install(DIRECTORY include/mrs_errorgraph/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   )
 

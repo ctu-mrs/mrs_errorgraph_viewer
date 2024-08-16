@@ -17,11 +17,11 @@
 #include <mrs_lib/mutex.h>
 #include <mrs_lib/subscribe_handler.h>
 
-#include <mrs_errorgraph_viewer/errorgraph.h>
+#include <mrs_errorgraph/errorgraph.h>
 
 //}
 
-namespace mrs_errorgraph_viewer
+namespace mrs_errorgraph
 {
 
   /* class ErrorgraphViewer //{ */
@@ -152,7 +152,7 @@ namespace mrs_errorgraph_viewer
     shopts.threadsafe = true;
     shopts.autostart = true;
     shopts.queue_size = 10;
-    shopts.transport_hints = ros::TransportHints().tcpNoDelay();
+    shopts.transport_hints = ros::TransportHints().unreliable();
 
     // | --------------------- Main subscriber -------------------- |
     sh_errorgraph_error_msg_ = mrs_lib::SubscribeHandler<errorgraph_element_msg_t>(shopts, "in/errors", &ErrorgraphViewer::cbkElement, this);
@@ -169,7 +169,7 @@ namespace mrs_errorgraph_viewer
 
   //}
 
-}  // namespace mrs_errorgraph_viewer
+}  // namespace mrs_errorgraph
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(mrs_errorgraph_viewer::ErrorgraphViewer, nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(mrs_errorgraph::ErrorgraphViewer, nodelet::Nodelet);

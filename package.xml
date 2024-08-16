@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
 
-  <name>mrs_errorgraph_viewer</name>
+  <name>mrs_errorgraph</name>
   <version>1.0.0</version>
   <description>
       An aggregator of states of key components from the MRS (Multi-Robot System) serves as a centralized monitoring system to provide real-time insights into the current status of the entire robotic system.

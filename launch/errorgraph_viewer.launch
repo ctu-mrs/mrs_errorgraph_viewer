@@ -21,10 +21,10 @@
   <group ns="$(arg UAV_NAME)">
 
     <!-- IROCBridge nodelet -->
-    <node pkg="nodelet" type="nodelet" name="errorgraph_viewer" args="$(arg nodelet) mrs_errorgraph_viewer/MRSErrorgraphViewer $(arg nodelet_manager)" launch-prefix="$(arg launch_prefix_debug)" output="screen">
+    <node pkg="nodelet" type="nodelet" name="errorgraph_viewer" args="$(arg nodelet) mrs_errorgraph/MRSErrorgraphViewer $(arg nodelet_manager)" launch-prefix="$(arg launch_prefix_debug)" output="screen">
 
-      <param name="num_worker_threads" value="4" />
-      <param name="config" value="$(find mrs_errorgraph_viewer)/config/state_monitor_config.yaml" />
+      <!-- <param name="num_worker_threads" value="4" /> -->
+      <param name="config" value="$(find mrs_errorgraph)/config/state_monitor_config.yaml" />
 
       <param if="$(eval arg('custom_config') == '')" name="custom_config" value="" />
       <param if="$(eval not arg('custom_config') == '' and arg('custom_config')[0] == '/')" name="custom_config" value="$(arg custom_config)" />
