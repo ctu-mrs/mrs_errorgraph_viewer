@@ -23,6 +23,12 @@ find_package(catkin REQUIRED COMPONENTS
   ${CATKIN_DEPENDENCIES}
   )
 
+find_package(OpenCV REQUIRED)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
+find_package(Graphviz REQUIRED)
+
 # messages
 add_message_files(DIRECTORY msg FILES
   ErrorgraphNodeID.msg
@@ -66,6 +72,11 @@ add_dependencies(MRSErrorgraphViewer
 ## Specify libraries to link a library or executable target against
 target_link_libraries(MRSErrorgraphViewer
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${GRAPHVIZ_CDT_LIBRARY}
+  ${GRAPHVIZ_GVC_LIBRARY}
+  ${GRAPHVIZ_CGRAPH_LIBRARY}
+  ${GRAPHVIZ_PATHPLAN_LIBRARY}
   )
 
 ## --------------------------------------------------------------

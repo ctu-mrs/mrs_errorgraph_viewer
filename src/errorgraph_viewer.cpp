@@ -1,10 +1,17 @@
 /* includes //{ */
 
+#include <fstream>
+
 /* each ros package must have these */
 #include <ros/ros.h>
 #include <nodelet/nodelet.h>
 
 #include <Eigen/Dense>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>    
+
+#include <graphviz/gvc.h>
 
 #include <mrs_lib/param_loader.h>
 #include <mrs_lib/mutex.h>
@@ -51,9 +58,62 @@ namespace mrs_errorgraph_viewer
     {
       std::scoped_lock lck(errorgraph_mtx_);
 
-      std::cout << "Graph:";
-      errorgraph_.write_dot();
-      return;
+      // const std::string ofname = "/tmp/errorgraph.dot";
+      // std::ofstream ofs(ofname);
+      // if (!ofs.is_open())
+      // {
+      //   ROS_ERROR_STREAM("[ErrorgraphViewer]: Could not open file \"" << ofname << "\" for writing. Not showing graph vizualization.");
+      //   return;
+      // }
+      // errorgraph_.write_dot(ofs);
+
+      std::stringstream ss;
+      errorgraph_.write_dot(ss);
+      const std::string graph_dot = ss.str();
+      GVC_t *gvc = gvContext();
+      graph_t *g = agmemread(graph_dot.c_str());
+
+      gvLayout(gvc, g, "dot");
+      char *raw_png_data;
+      unsigned int raw_png_data_len;
+      gvRenderData(gvc, g, "png", &raw_png_data, &raw_png_data_len);
+      gvFreeLayout(gvc, g);
+      agclose(g);
+      gvFreeContext(gvc);
+
+      std::vector<char> vec_png_data;
+      vec_png_data.insert(std::end(vec_png_data), raw_png_data, raw_png_data + raw_png_data_len);
+      gvFreeRenderData(raw_png_data);
+
+      cv::Mat image = cv::imdecode(std::move(vec_png_data), cv::ImreadModes::IMREAD_COLOR);
+      cv::imshow("Errorgraph visualization", image);
+      cv::waitKey(10);
+
+      // /* rendering using system + imread + imshow //{ */
+      
+      // const std::string img_ofname = "/tmp/errorgraph.png";
+      // const auto sys_cmd = "dot -Tpng -o " + img_ofname + " " + ofname;
+      // const auto ret = system(sys_cmd.c_str());
+      // ROS_INFO_STREAM("[ErrorgraphViewer]: Executing command \"" << sys_cmd << "\" to produce graph image.");
+      // if (ret != 0)
+      // {
+      //   ROS_ERROR_STREAM("[ErrorgraphViewer]: Command \"" << sys_cmd << "\" returned error code " << ret << ". Not showing graph visualization.");
+      //   return;
+      // }
+      // // ROS_INFO_STREAM("[ErrorgraphViewer]: Command \"" << sys_cmd << "\" returned error code " << ret << ". Not showing graph visualization.");
+      
+      // const cv::Mat image = cv::imread(img_ofname);
+      // if (image.empty())
+      // {
+      //   ROS_ERROR_STREAM("[ErrorgraphViewer]: Failed to open image file \"" << img_ofname << "\". Not showing graph visualization.");
+      //   return;
+      // }
+      
+      // cv::imshow("Errorgraph visualization", image);
+      // cv::waitKey(10);
+      
+      //}
+
       // const auto leaves = errorgraph_.find_all_leaves();
 
 //       std::cout << "Error dependencies are:\n";

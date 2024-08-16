@@ -129,22 +129,23 @@ namespace mrs_errorgraph_viewer
 
     private:
       std::vector<std::unique_ptr<element_t>> elements_;
+      bool graph_up_to_date_ = false;
 
-      static std::vector<element_t*> find_waiting_for(const element_t& element, const std::vector<std::unique_ptr<element_t>>& elements);
+      std::vector<element_t*> find_waiting_for(const element_t& element);
 
-      static element_t* find_element_mutable(const node_id_t& node_id, const std::vector<std::unique_ptr<element_t>>& elements);
+      element_t* find_element_mutable(const node_id_t& node_id);
 
-      static void prepare_graph(const std::vector<std::unique_ptr<element_t>>& elements);
+      void prepare_graph();
 
-      static void build_graph(const std::vector<std::unique_ptr<element_t>>& elements);
+      void build_graph();
 
-      static std::vector<const element_t*> DFS(element_t* from, const std::vector<std::unique_ptr<element_t>>& elements, bool* loop_detected_out = nullptr);
+      std::vector<const element_t*> DFS(element_t* from, bool* loop_detected_out = nullptr);
 
       size_t last_element_id = 0;
 
     public:
 
-      void write_dot();
+      void write_dot(std::ostream& os);
 
       std::vector<const element_t* > find_dependency_roots(const node_id_t& node_id, bool* loop_detected_out = nullptr);
 
