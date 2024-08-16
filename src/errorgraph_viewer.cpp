@@ -37,6 +37,16 @@ namespace mrs_errorgraph_viewer
     std::mutex errorgraph_mtx_;
     Errorgraph errorgraph_;
 
+    // mini-helper struct to properly release the Graphviz context
+    struct GVC_deleter_t
+    {
+      void operator()(GVC_t* p)
+      {
+        gvFreeContext(p);
+      }
+    };
+    std::unique_ptr<GVC_t, GVC_deleter_t> graphviz_context_; 
+
     // | ---------------------- ROS subscribers --------------------- |
 
     std::shared_ptr<mrs_lib::TimeoutManager> tim_mgr_;
@@ -58,98 +68,30 @@ namespace mrs_errorgraph_viewer
     {
       std::scoped_lock lck(errorgraph_mtx_);
 
-      // const std::string ofname = "/tmp/errorgraph.dot";
-      // std::ofstream ofs(ofname);
-      // if (!ofs.is_open())
-      // {
-      //   ROS_ERROR_STREAM("[ErrorgraphViewer]: Could not open file \"" << ofname << "\" for writing. Not showing graph vizualization.");
-      //   return;
-      // }
-      // errorgraph_.write_dot(ofs);
-
+      // Write the current errorgraph to a string in the dot format
       std::stringstream ss;
       errorgraph_.write_dot(ss);
       const std::string graph_dot = ss.str();
-      GVC_t *gvc = gvContext();
+      // load the errorgraph to Graphviz from the string
       graph_t *g = agmemread(graph_dot.c_str());
 
-      gvLayout(gvc, g, "dot");
+      // use Graphviz to generate a PNG image of the graph
+      gvLayout(graphviz_context_.get(), g, "dot");
       char *raw_png_data;
       unsigned int raw_png_data_len;
-      gvRenderData(gvc, g, "png", &raw_png_data, &raw_png_data_len);
-      gvFreeLayout(gvc, g);
+      gvRenderData(graphviz_context_.get(), g, "png", &raw_png_data, &raw_png_data_len);
+      gvFreeLayout(graphviz_context_.get(), g);
       agclose(g);
-      gvFreeContext(gvc);
 
+      // copy the PNG data from a C-style array to a std::vector and free the C array TODO: avoid the copy here somehow
       std::vector<char> vec_png_data;
       vec_png_data.insert(std::end(vec_png_data), raw_png_data, raw_png_data + raw_png_data_len);
       gvFreeRenderData(raw_png_data);
 
+      // display the image using OpenCV!
       cv::Mat image = cv::imdecode(std::move(vec_png_data), cv::ImreadModes::IMREAD_COLOR);
       cv::imshow("Errorgraph visualization", image);
       cv::waitKey(10);
-
-      // /* rendering using system + imread + imshow //{ */
-      
-      // const std::string img_ofname = "/tmp/errorgraph.png";
-      // const auto sys_cmd = "dot -Tpng -o " + img_ofname + " " + ofname;
-      // const auto ret = system(sys_cmd.c_str());
-      // ROS_INFO_STREAM("[ErrorgraphViewer]: Executing command \"" << sys_cmd << "\" to produce graph image.");
-      // if (ret != 0)
-      // {
-      //   ROS_ERROR_STREAM("[ErrorgraphViewer]: Command \"" << sys_cmd << "\" returned error code " << ret << ". Not showing graph visualization.");
-      //   return;
-      // }
-      // // ROS_INFO_STREAM("[ErrorgraphViewer]: Command \"" << sys_cmd << "\" returned error code " << ret << ". Not showing graph visualization.");
-      
-      // const cv::Mat image = cv::imread(img_ofname);
-      // if (image.empty())
-      // {
-      //   ROS_ERROR_STREAM("[ErrorgraphViewer]: Failed to open image file \"" << img_ofname << "\". Not showing graph visualization.");
-      //   return;
-      // }
-      
-      // cv::imshow("Errorgraph visualization", image);
-      // cv::waitKey(10);
-      
-      //}
-
-      // const auto leaves = errorgraph_.find_all_leaves();
-
-//       std::cout << "Error dependencies are:\n";
-//       for (const auto& leaf : leaves)
-//       {
-//         const auto roots = errorgraph_.find_dependency_roots(leaf->source_node);
-//         std::vector<element_with_depth_t> open_elements;
-//         open_elements.reserve(roots.size());
-//         for (const auto& el_ptr : roots)
-//           open_elements.emplace_back(el_ptr, 0);
-
-//         while (!open_elements.empty())
-//         {
-//           auto cur_elem = open_elements.back();
-//           open_elements.pop_back();
-//           for (int it = 0; it < cur_elem.depth; it++)
-//             std::cout << "\t";
-//           if (cur_elem.depth > 0)
-//             std::cout << "└ ";
-//           else
-//             std::cout << "x ";
-//           std::cout << cur_elem.element->source_node << ":\t";
-//           for (int it = 0; it < cur_elem.element->errors.size(); it++)
-//           {
-//             std::cout << cur_elem.element->errors.at(it).type;
-//             if (it+1 < cur_elem.element->errors.size())
-//               std::cout << ",";
-//           }
-//           std::cout << "\n";
-
-
-//           open_elements.reserve(open_elements.size() + cur_elem.element->parents.size());
-//           for (const auto& el_ptr : cur_elem.element->parents)
-//             open_elements.emplace_back(el_ptr, cur_elem.depth+1);
-//         }
-//       }
     }
 
     // | ----------------- error message callback ----------------- |
@@ -196,6 +138,8 @@ namespace mrs_errorgraph_viewer
       ROS_ERROR("[ErrorgraphViewer]: Could not load all parameters!");
       ros::shutdown();
     }
+
+    graphviz_context_ = std::unique_ptr<GVC_t, GVC_deleter_t>(gvContext());
 
     // | ----------------------- subscribers ---------------------- |
 
