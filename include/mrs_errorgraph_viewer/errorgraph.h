@@ -43,7 +43,6 @@ namespace mrs_errorgraph_viewer
 
   struct errorgraph_error_t
   {
-    ros::Time stamp;
     std::string type;
     std::optional<node_id_t> waiting_for_node;
 
@@ -63,7 +62,7 @@ namespace mrs_errorgraph_viewer
     }
 
     errorgraph_error_t(const errorgraph_error_msg_t& msg)
-      : stamp(msg.stamp), type(msg.error_type)
+      : type(msg.error_type)
     {
       if (msg.error_type == errorgraph_error_msg_t::ERROR_TYPE_WAITING_FOR)
         waiting_for_node = node_id_t::from_msg(msg.waiting_for_node);
@@ -81,13 +80,15 @@ namespace mrs_errorgraph_viewer
         size_t element_id;
         node_id_t source_node;
         std::vector<errorgraph_error_t> errors;
+        // last time this was updated from a message
+        ros::Time stamp = ros::Time(0);
 
         // graph-related variables
         std::vector<element_t*> parents;
         std::vector<element_t*> children;
-        bool visited;
+        bool visited = false;
 
-        element_t(node_id_t&& source_node, size_t element_id)
+        element_t(const node_id_t& source_node, size_t element_id)
           : source_node(source_node), element_id(element_id) {};
 
         inline std::vector<const node_id_t*> waiting_for() const
@@ -120,10 +121,15 @@ namespace mrs_errorgraph_viewer
 
         inline bool is_no_error() const
         {
-          return std::all_of(std::begin(errors), std::end(errors), [](const auto& error)
+          return !errors.empty() && std::all_of(std::begin(errors), std::end(errors), [](const auto& error)
               {
                 return error.is_no_error();
               });
+        }
+
+        inline bool is_not_reporting() const
+        {
+          return errors.empty();
         }
       };
 
@@ -140,6 +146,8 @@ namespace mrs_errorgraph_viewer
       void build_graph();
 
       std::vector<const element_t*> DFS(element_t* from, bool* loop_detected_out = nullptr);
+
+      element_t* add_new_element(const node_id_t& node_id);
 
       size_t last_element_id = 0;
 

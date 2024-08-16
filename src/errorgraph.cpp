@@ -114,7 +114,8 @@ namespace mrs_errorgraph_viewer
     const auto waiting_for_node_ids = element.waiting_for();
     for (const auto& node_id_ptr : waiting_for_node_ids)
     {
-      const auto previous_el = find_element_mutable(*node_id_ptr);
+      element_t* previous_el = find_element_mutable(*node_id_ptr);
+      // if the element was found, add it to the list
       if (previous_el != nullptr)
         waiting_for_elements.push_back(previous_el);
     }
@@ -145,22 +146,36 @@ namespace mrs_errorgraph_viewer
       el_ptr->children.clear();
       el_ptr->parents.clear();
       el_ptr->visited = false;
+
+      // initialize all nodes this node is waiting for if they do not exist
+      for (const auto& node_id_ptr : el_ptr->waiting_for())
+      {
+        const element_t* previous_el = find_element(*node_id_ptr);
+        // if the element was not found, it may have not reported yet, initialize it
+        if (previous_el == nullptr)
+          add_new_element(*node_id_ptr);
+      }
     }
     graph_up_to_date_ = false;
   }
 
+  Errorgraph::element_t* Errorgraph::add_new_element(const node_id_t& node_id)
+  {
+    auto new_element_ptr = std::make_unique<element_t>(node_id, last_element_id++);
+    element_t* element = new_element_ptr.get();
+    elements_.push_back(std::move(new_element_ptr));
+    return element;
+  }
+
   const Errorgraph::element_t* Errorgraph::add_element_from_msg(const errorgraph_element_msg_t& msg)
   {
-    node_id_t source_node_id = node_id_t::from_msg(msg.source_node);
+    const node_id_t& source_node_id = node_id_t::from_msg(msg.source_node);
     element_t* element = find_element_mutable(source_node_id);
     // if this element doesn't exist yet, construct it
     if (element == nullptr)
-    {
-      auto new_element_ptr = std::make_unique<element_t>(std::move(source_node_id), last_element_id++);
-      element = new_element_ptr.get();
-      elements_.emplace_back(std::move(new_element_ptr));
-    }
+      element = add_new_element(source_node_id);
 
+    element->stamp = msg.stamp;
     element->errors.clear();
     for (const auto& error_msg : msg.errors)
       element->errors.emplace_back(error_msg);
@@ -173,12 +188,37 @@ namespace mrs_errorgraph_viewer
   {
     build_graph();
 
+    const auto now = ros::Time::now();
     os << "digraph G\n{\n";
     for (const auto& element : elements_)
     {
-      os << "  " << element->element_id << " [label=\"" << element->source_node << "\"];\n";
+      // define the element itself
+      os << "  " << element->element_id << " [label=<<B><U>" << element->source_node << "</U></B><BR/>";
+
+      if (element->is_not_reporting())
+        os << "not reporting";
+      else
+        os << "age: " << (now-element->stamp).toSec() << "s";
+      for (const auto& error : element->errors)
+      {
+        if (error.is_waiting_for() || error.is_no_error())
+          continue;
+        os << "<BR/>" << error.type;
+      }
+      os << ">";
+
+      // if it is root, mark it with a box shape
+      if (element->children.empty())
+        os << " shape=box";
+      // if the node has not reported yet, mark it with a red color
+      if (element->is_not_reporting())
+        os << " color=red";
+
+      os << "];\n";
+
+      // define connections to all children
       for (const auto& child : element->children)
-        os << "  " << element->element_id << " -> " << child->element_id << ";\n";
+        os << "  " << element->element_id << " -> "/*>*/ << child->element_id << "[label=\"waiting for\"];\n";
     }
     os << "}";
   }

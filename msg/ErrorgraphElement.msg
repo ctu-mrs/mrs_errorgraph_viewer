@@ -1,3 +1,5 @@
+time stamp
+
 mrs_errorgraph_viewer/ErrorgraphNodeID source_node
 
 mrs_errorgraph_viewer/ErrorgraphError[] errors
