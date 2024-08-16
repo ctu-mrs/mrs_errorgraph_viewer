@@ -26,7 +26,7 @@ namespace mrs_errorgraph_viewer
       auto cur_elem = open_elements.back();
       cur_elem->visited = true;
       open_elements.pop_back();
-      const auto prevs = find_waiting_for(*cur_elem);
+      const auto prevs = find_elements_waited_for(*cur_elem);
 
       // if this element doesn't have any nodes it's waiting for, it is a root
       if (prevs.empty())
@@ -107,19 +107,41 @@ namespace mrs_errorgraph_viewer
     return leaves;
   }
 
-  std::vector<Errorgraph::element_t*> Errorgraph::find_waiting_for(const element_t& element)
+  std::vector<Errorgraph::element_t*> Errorgraph::find_elements_waited_for(const element_t& element)
   {
-    std::vector<element_t*> waiting_for_elements;
+    std::vector<element_t*> waited_for_elements;
 
-    const auto waiting_for_node_ids = element.waiting_for();
-    for (const auto& node_id_ptr : waiting_for_node_ids)
+    const auto waited_for_node_ids = element.waited_for_nodes();
+    for (const auto& node_id_ptr : waited_for_node_ids)
     {
-      element_t* previous_el = find_element_mutable(*node_id_ptr);
+      element_t* const previous_el = find_element_mutable(*node_id_ptr);
       // if the element was found, add it to the list
       if (previous_el != nullptr)
-        waiting_for_elements.push_back(previous_el);
+        waited_for_elements.push_back(previous_el);
     }
-    return waiting_for_elements;
+
+    const auto waited_for_topic_names = element.waited_for_topics();
+    for (const auto& topic_name_ptr : waited_for_topic_names)
+    {
+      element_t* const previous_el = find_element_mutable(*topic_name_ptr);
+      // if the element was found, add it to the list
+      if (previous_el != nullptr)
+        waited_for_elements.push_back(previous_el);
+    }
+
+    return waited_for_elements;
+  }
+
+  Errorgraph::element_t* Errorgraph::find_element_mutable(const std::string& topic_name)
+  {
+    const auto elem_it = std::find_if(std::begin(elements_), std::end(elements_), [topic_name](const auto& el_ptr)
+      {
+        return el_ptr->topic_name == topic_name;
+      });
+    if (elem_it == std::end(elements_))
+      return nullptr;
+    else
+      return elem_it->get();
   }
 
   Errorgraph::element_t* Errorgraph::find_element_mutable(const node_id_t& node_id)
@@ -134,6 +156,11 @@ namespace mrs_errorgraph_viewer
       return elem_it->get();
   }
 
+  const Errorgraph::element_t* Errorgraph::find_element(const std::string& topic_name)
+  {
+    return find_element_mutable(topic_name);
+  }
+
   const Errorgraph::element_t* Errorgraph::find_element(const node_id_t& node_id)
   {
     return find_element_mutable(node_id);
@@ -141,27 +168,49 @@ namespace mrs_errorgraph_viewer
 
   void Errorgraph::prepare_graph()
   {
-    for (const auto& el_ptr : elements_)
+    // use this old-school iteration to not iterate
+    // over new elements that may possibly be created
+    // within the loop
+    const int n_elements = elements_.size();
+    for (int it = 0; it < n_elements; it++)
     {
+      element_t* const el_ptr = elements_.at(it).get();
       el_ptr->children.clear();
       el_ptr->parents.clear();
       el_ptr->visited = false;
 
       // initialize all nodes this node is waiting for if they do not exist
-      for (const auto& node_id_ptr : el_ptr->waiting_for())
+      for (const auto& node_id_ptr : el_ptr->waited_for_nodes())
       {
         const element_t* previous_el = find_element(*node_id_ptr);
         // if the element was not found, it may have not reported yet, initialize it
         if (previous_el == nullptr)
           add_new_element(*node_id_ptr);
       }
+
+      // initialize all nodes this node is waiting for if they do not exist
+      for (const auto& topic_name_ptr : el_ptr->waited_for_topics())
+      {
+        const element_t* previous_el = find_element(*topic_name_ptr);
+        // if the element was not found, it may have not reported yet, initialize it
+        if (previous_el == nullptr)
+          add_new_element(*topic_name_ptr);
+      }
     }
     graph_up_to_date_ = false;
   }
 
+  Errorgraph::element_t* Errorgraph::add_new_element(const std::string& topic_name, const node_id_t& node_id)
+  {
+    auto new_element_ptr = std::make_unique<element_t>(last_element_id++, topic_name, node_id);
+    element_t* element = new_element_ptr.get();
+    elements_.push_back(std::move(new_element_ptr));
+    return element;
+  }
+
   Errorgraph::element_t* Errorgraph::add_new_element(const node_id_t& node_id)
   {
-    auto new_element_ptr = std::make_unique<element_t>(node_id, last_element_id++);
+    auto new_element_ptr = std::make_unique<element_t>(last_element_id++, node_id);
     element_t* element = new_element_ptr.get();
     elements_.push_back(std::move(new_element_ptr));
     return element;
@@ -193,8 +242,20 @@ namespace mrs_errorgraph_viewer
     for (const auto& element : elements_)
     {
       // define the element itself
-      os << "  " << element->element_id << " [label=<<B><U>" << element->source_node << "</U></B><BR/>";
+      os << "  " << element->element_id << " [label=<<B><U>";
 
+      // use either the node ID or the topic name as the element label
+      // based on its type
+      switch (element->type)
+      {
+        case element_t::type_t::topic:
+          os << element->topic_name; break;
+        case element_t::type_t::node:
+          os << element->source_node; break;
+      }
+      os << "</U></B><BR/>";
+
+      // add more info about the element
       if (element->is_not_reporting())
         os << "not reporting";
       else
@@ -207,9 +268,15 @@ namespace mrs_errorgraph_viewer
       }
       os << ">";
 
+      // draw a shape of the element based on its type
+      // for topics, use a diamod shape
+      if (element->type == element_t::type_t::topic)
+        os << " shape=diamond";
       // if it is root, mark it with a box shape
-      if (element->children.empty())
+      else if (element->children.empty())
         os << " shape=box";
+      // otherwise, it's just a normal node, so leave the default shape
+
       // if the node has not reported yet, mark it with a red color
       if (element->is_not_reporting())
         os << " color=red";
