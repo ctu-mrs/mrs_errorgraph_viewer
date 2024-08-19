@@ -21,13 +21,16 @@
 
 //}
 
-namespace mrs_errorgraph
+namespace mrs_errorgraph_viewer
 {
 
   /* class ErrorgraphViewer //{ */
 
   class ErrorgraphViewer : public nodelet::Nodelet
   {
+  private:
+    using errorgraph_element_msg_t = mrs_errorgraph::errorgraph_element_msg_t;
+
   public:
     virtual void onInit();
 
@@ -35,7 +38,7 @@ namespace mrs_errorgraph
     ros::NodeHandle nh_;
 
     std::mutex errorgraph_mtx_;
-    Errorgraph errorgraph_;
+    mrs_errorgraph::Errorgraph errorgraph_;
 
     // mini-helper struct to properly release the Graphviz context
     struct GVC_deleter_t
@@ -54,14 +57,6 @@ namespace mrs_errorgraph
     mrs_lib::SubscribeHandler<errorgraph_element_msg_t> sh_errorgraph_error_msg_;
 
     // | ----------------------- main timer ----------------------- |
-
-    struct element_with_depth_t
-    {
-      const Errorgraph::element_t* element;
-      int depth;
-      element_with_depth_t(const Errorgraph::element_t* const element, const int depth)
-        : element(element), depth(depth) {};
-    };
 
     ros::Timer timer_main_;
     void timerMain(const ros::TimerEvent& event)
@@ -172,4 +167,4 @@ namespace mrs_errorgraph
 }  // namespace mrs_errorgraph
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(mrs_errorgraph::ErrorgraphViewer, nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(mrs_errorgraph_viewer::ErrorgraphViewer, nodelet::Nodelet);

@@ -1,5 +1,5 @@
 <library path="lib/libMRSErrorgraphViewer">
-  <class name="mrs_errorgraph/MRSErrorgraphViewer" type="mrs_errorgraph::ErrorgraphViewer" base_class_type="nodelet::Nodelet">
-    <description>StateMonitor nodelet</description>
+  <class name="mrs_errorgraph_viewer/MRSErrorgraphViewer" type="mrs_errorgraph_viewer::ErrorgraphViewer" base_class_type="nodelet::Nodelet">
+    <description>An utility for visualization of the MRS Errorgraph.</description>
   </class>
 </library>

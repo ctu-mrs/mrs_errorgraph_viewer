@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15.0)
-project(mrs_errorgraph)
+project(mrs_errorgraph_viewer)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,7 @@ set(CATKIN_DEPENDENCIES
   nodelet
   mrs_msgs
   mrs_lib
+  mrs_errorgraph
   )
 
 set(LIBRARIES
@@ -29,21 +30,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 find_package(Graphviz REQUIRED)
 
-# messages
-add_message_files(DIRECTORY msg FILES
-  ErrorgraphNodeID.msg
-  ErrorgraphError.msg
-  ErrorgraphElement.msg
-  )
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-  mrs_msgs
-  )
-
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${LIBRARIES}
@@ -53,7 +39,6 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
   include
-  graaf/include
   )
 
 ## | ------------ MRSErrorgraphViewer ------------ |
@@ -61,7 +46,6 @@ include_directories(
 ## Declare a C++ library
 add_library(MRSErrorgraphViewer
   src/errorgraph_viewer.cpp
-  src/errorgraph.cpp
   )
 
 add_dependencies(MRSErrorgraphViewer
@@ -93,7 +77,7 @@ install(DIRECTORY launch config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )
 
-install(DIRECTORY include/mrs_errorgraph/
+install(DIRECTORY include/mrs_errorgraph_viewer/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   )
 
