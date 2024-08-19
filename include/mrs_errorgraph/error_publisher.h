@@ -49,19 +49,53 @@ namespace mrs_errorgraph
 
       void addGeneralError(const error_id_t id, const std::string& description)
       {
+        const auto now = ros::Time::now();
         std::scoped_lock lck(errors_mtx_);
         for (auto& error_wrapper : errors_)
         {
           if (error_wrapper.id.has_value() && error_wrapper.id.value() == id)
           {
             error_wrapper.msg.type = description;
+            error_wrapper.msg.stamp = now;
             return;
           }
         }
         mrs_errorgraph::ErrorgraphError msg;
         msg.type = description;
-        msg.stamp = ros::Time::now();
+        msg.stamp = now;
         errors_.push_back({id, std::move(msg)});
+      }
+
+      void addOneshotError(const std::string& description)
+      {
+        const auto now = ros::Time::now();
+        std::scoped_lock lck(errors_mtx_);
+        mrs_errorgraph::ErrorgraphError msg;
+        msg.type = description;
+        msg.stamp = now;
+        errors_.push_back({std::nullopt, std::move(msg)});
+      }
+
+      void addWaitingForNodeError(const std::string& node, const std::string& component)
+      {
+        const auto now = ros::Time::now();
+        std::scoped_lock lck(errors_mtx_);
+        for (auto& error_wrapper : errors_)
+        {
+          if (error_wrapper.msg.type == mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_NODE
+           && error_wrapper.msg.waited_for_node.node == node
+           && error_wrapper.msg.waited_for_node.component == component)
+          {
+            error_wrapper.msg.stamp = now;
+            return;
+          }
+        }
+        mrs_errorgraph::ErrorgraphError msg;
+        msg.type = mrs_errorgraph::ErrorgraphError::TYPE_WAITING_FOR_NODE;
+        msg.stamp = now;
+        msg.waited_for_node.node = node;
+        msg.waited_for_node.component = component;
+        errors_.push_back({std::nullopt, std::move(msg)});
       }
 
     private:
