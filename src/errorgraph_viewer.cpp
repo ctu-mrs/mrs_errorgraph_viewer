@@ -10,6 +10,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>    
+#include <opencv2/imgproc.hpp>
 
 #include <graphviz/gvc.h>
 
@@ -39,6 +40,8 @@ namespace mrs_errorgraph_viewer
 
     std::mutex errorgraph_mtx_;
     mrs_errorgraph::Errorgraph errorgraph_;
+
+    double image_scale_ = 1.0;
 
     // mini-helper struct to properly release the Graphviz context
     struct GVC_deleter_t
@@ -85,8 +88,17 @@ namespace mrs_errorgraph_viewer
 
       // display the image using OpenCV!
       cv::Mat image = cv::imdecode(std::move(vec_png_data), cv::ImreadModes::IMREAD_COLOR);
+      cv::resize(image, image, {}, image_scale_, image_scale_, cv::INTER_LINEAR);
       cv::imshow("Errorgraph visualization", image);
-      cv::waitKey(10);
+      const int key = cv::waitKey(10);
+      switch (key)
+      {
+        case '+': image_scale_ *= 1.2; break;
+        case '-': image_scale_ /= 1.2; break;
+        case '=': image_scale_ = 1.0; break;
+        default: break;
+      }
+      image_scale_ = std::clamp(image_scale_, 1e-1, 1e1);
     }
 
     // | ----------------- error message callback ----------------- |
