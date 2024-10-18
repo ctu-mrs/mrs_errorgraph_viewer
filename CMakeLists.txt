@@ -31,14 +31,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(Graphviz REQUIRED)
 
 catkin_package(
-  INCLUDE_DIRS include
+  # INCLUDE_DIRS include
   LIBRARIES ${LIBRARIES}
   CATKIN_DEPENDS ${CATKIN_DEPENDENCIES}
   )
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  include
+  # include
   )
 
 ## | ------------ MRSErrorgraphViewer ------------ |
